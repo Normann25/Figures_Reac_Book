@@ -90,9 +90,13 @@ def morse_antimorse(D_e, b, r, r_e):
     r_e: int or float
         Equilibrium bond distance
     """
-    q = r-r_e
-    V_morse = morse(D_e, b, r, r_e)
-    V_anti = (D_e/2)*(np.exp(-2*b*q)+2*np.exp(-b*q))
+    if r_e == None:
+        V_morse = D_e*(1-np.exp(-b*(r)))**2
+        V_anti = (D_e/2)*(np.exp(-2*b*r)+2*np.exp(-b*r))
+    else:
+        q = r-r_e
+        V_morse = morse(D_e, b, r, r_e)
+        V_anti = (D_e/2)*(np.exp(-2*b*q)+2*np.exp(-b*q))
     return V_morse, V_anti
 
 def make_subplots_chap2a(axes, xdataname, ydataname, xcon, ycon, n, m):
@@ -217,6 +221,14 @@ def find_intercept(c1, c2, m1, m2):
     x_intercept = (c2-c1)/(m1-m2)
     y_intercept = m1*x_intercept+c1
     return x_intercept, y_intercept
+
+def orb_motion(D_e, b, R, r_eq, l, mu):
+    q = R-r_eq
+    V_morse = D_e*(1-np.exp(-b*(q)))**2 -D_e
+    L = np.sqrt(l*(l+1)) # *((6.626*10**(-34))/(2*np.pi))
+    pot = (L**(2))/(2*mu*R**(2)) - 4.5
+    V_eff = V_morse + pot
+    return V_morse, pot, V_eff
 
 class AngleAnnotation(Arc):
     """
