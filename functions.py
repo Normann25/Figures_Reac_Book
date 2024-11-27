@@ -3,7 +3,220 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Arc
 from matplotlib.transforms import IdentityTransform, TransformedBbox, Bbox
 from typing import Sequence
+from sympy import solve, Poly, Eq, Function, exp, symbols
+import seaborn as sns
 
+def morse(D_e, b, r, r_e):
+    """
+    Parameters
+    ----------
+    D_e: int or float
+        Dissociation energy
+
+    b: int or float
+        Controls width of potential
+
+    r: list or array of floats
+        Internuclear separation
+
+    r_e: int or float
+        Equilibrium bond distance
+    """
+    V = D_e*(1-np.exp(-b*(r-r_e)))**2
+    return V
+
+def energy_levels(levels, wavenumber, anharmonicity, D_e, b, r_e):
+    """
+    Calculates energy levels with the same length as the width of the Morse potential it is used for.
+    The spacing between the energy levels decreases with increasing energy.
+   
+    Parameters
+    ----------
+    levels: int
+        Number of energy levels to calculate
+
+    wavenumber: 
+
+    anharmonicity:
+
+    D_e: int or float
+        Dissociation energy
+
+    b: int or float
+        Controls width of potential
+
+    r_e: int or float
+        Equilibrium bond distance
+    """
+    energy_levels = []
+    distance = []
+    for v in range(levels+1):
+        E_v = (v+0.5)*wavenumber-((v+0.5)**2)*wavenumber*anharmonicity
+        energy_levels.append(E_v)
+        r = symbols('r')
+        dist = solve(D_e*(1-exp(-b*(r-r_e)))**2-E_v)
+        distance.append(dist)
+    distance_array = np.array(distance)
+    return energy_levels, distance_array
+
+def gauss(sigma, x, mu):
+    """
+    Parameters
+    ----------
+    sigma: int or float
+        Standard deviation of the destribution
+
+    x: list or array of floats
+
+    mu: int or float
+        Mean or expectation of the distribution
+    """
+    y = (1/sigma*np.sqrt(2*np.pi))*np.exp(-0.5*((x-mu)/sigma)**2)
+    return y
+
+def morse_antimorse(D_e, b, r, r_e):
+    """
+    Parameters
+    ----------
+    D_e: int or float
+        Dissociation energy
+
+    b: int or float
+        Controls width of potential
+
+    r: list or array of floats
+        Internuclear separation
+
+    r_e: int or float
+        Equilibrium bond distance
+    """
+    q = r-r_e
+    V_morse = morse(D_e, b, r, r_e)
+    V_anti = (D_e/2)*(np.exp(-2*b*q)+2*np.exp(-b*q))
+    return V_morse, V_anti
+
+def make_subplots_chap2a(axes, xdataname, ydataname, xcon, ycon, n, m):
+    """
+    Parameters
+    ----------
+    axes : `matplotlib.axes.Axes`
+        The Axes to add the graphs to.
+    
+    axdataname, ydataname, xcon, ycon : list, array or dataframe column
+
+    n, m : int or float
+        Defines frame in plot
+    """
+    ax = axes
+    # pathway along reaction path
+    ax.plot(xdataname, ydataname, color = 'k')
+    sns.lineplot(x = xcon, y = ycon, color = 'k', ax = ax)
+    # Frame
+    ax.hlines(ycon[0]-5, xdataname.min()-n, m*xdataname.max()+n, color = 'k', lw = 1.2)
+    ax.hlines(ycon[0]+5, xdataname.max()+n, m*xdataname.max()+n, color = 'k', lw = 1.2)
+    ax.vlines(xdataname.min()-n, ycon[0]-5, ydataname[-1], color = 'k', lw = 1.2)
+    ax.vlines(xdataname.max()+n, ycon[0]+5, ydataname[-1], color = 'k', lw = 1.2)
+    # Remove ticks
+    ax.set_ylabel(None, fontsize = 0)
+    ax.set_xlabel(None, fontsize = 0)
+    plt.xticks([], [])
+    plt.yticks([], [])
+    ax.set_xticks([]) # for major ticks
+    ax.set_yticks([])
+    ax.set_xticks([], minor=True) # for minor ticks
+    ax.set_yticks([], minor=True)
+    sns.despine(top=True, right=True, left=True, bottom=True)
+
+def make_subplots_chap2bd(axes, xdataname, ydataname, xmin1, xmax, xmin2, ymin, ymax):
+    """
+    Parameters
+    ----------
+    axes : `matplotlib.axes.Axes`
+        The Axes to add the graphs to.
+    
+    axdataname, ydataname : list, array or dataframe column
+
+    xmin1, xmax, xmin2, ymin, ymax : int or float
+        Defines frame in plot
+    """
+    ax = axes
+    # pathway along reaction path
+    ax.plot(xdataname, ydataname, color = 'k')
+    # Frame
+    ax.hlines(-ymin, xmin1, xmax, color = 'k', lw = 1.2)
+    ax.hlines(ymin, xmin2, xmax, color = 'k', lw = 1.2)
+    ax.vlines(xmin1, -ymin, ymax, color = 'k', lw = 1.2)
+    ax.vlines(xmin2, ymin, ymax, color = 'k', lw = 1.2)
+    # Remove ticks
+    ax.set_ylabel(None, fontsize = 0)
+    ax.set_xlabel(None, fontsize = 0)
+    plt.xticks([], [])
+    plt.yticks([], [])
+    ax.set_xticks([]) # for major ticks
+    ax.set_yticks([])
+    ax.set_xticks([], minor=True) # for minor ticks
+    ax.set_yticks([], minor=True)
+    sns.despine(top=True, right=True, left=True, bottom=True)
+
+def make_subplots_chap2c(axes, xdataname, ydataname, xcon, ycon, n, xmin1, xmax, xmin2, m):
+    """
+    Parameters
+    ----------
+    axes : `matplotlib.axes.Axes`
+        The Axes to add the graphs to.
+    
+    axdataname, ydataname, xcon, ycon : list, array or dataframe column
+
+    n, m, xmin1, xmax, xmin2 : int or float
+        Defines frame in plot
+    """
+    ax = axes
+    # pathway along reaction path
+    ax.plot(xdataname, ydataname, color = 'k')
+    sns.lineplot(x = xcon, y = ycon, color = 'k', ax = ax)
+    # Frame
+    ax.hlines(ydataname.min()-n, xmin1, xmax, color = 'k', lw = 1.2)
+    ax.hlines(ydataname.max()+n, xmin2, xmax, color = 'k', lw = 1.2)
+    ax.vlines(xmin1, ydataname.min()-n, m*ydataname.max()+n, color = 'k', lw = 1.2)
+    ax.vlines(xmin2, ydataname.max()+n, m*ydataname.max()+n, color = 'k', lw = 1.2)
+    # Remove ticks
+    ax.set_ylabel(None, fontsize = 0)
+    ax.set_xlabel(None, fontsize = 0)
+    plt.xticks([], [])
+    plt.yticks([], [])
+    ax.set_xticks([]) # for major ticks
+    ax.set_yticks([])
+    ax.set_xticks([], minor=True) # for minor ticks
+    ax.set_yticks([], minor=True)
+    sns.despine(top=True, right=True, left=True, bottom=True)
+
+def rot_xy(x,y,phi):
+    """
+    Rotates x and y coordinates a certain angle phi
+
+    Parameters
+    ----------
+    x, y : list or array of floats
+        Coordinates to be rotated
+
+    phi : int or float
+        Angle the coordinates should be rotated in radians
+    """
+    x_rot, y_rot = np.array([[np.cos(phi), -np.sin(phi)], [np.sin(phi), np.cos(phi)]])@np.array([x,y])
+    return x_rot, y_rot
+
+def find_intercept(c1, c2, m1, m2):
+    """
+    Calculates the x and y coordinates of the intercept between two straight lines defined as:
+    y = m1*x + c1 and y = m2*x + c2
+
+    Parameters
+    ----------
+    c1, c2, m1, m2 : int or float
+    """
+    x_intercept = (c2-c1)/(m1-m2)
+    y_intercept = m1*x_intercept+c1
+    return x_intercept, y_intercept
 
 class AngleAnnotation(Arc):
     """
