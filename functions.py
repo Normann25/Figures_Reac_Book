@@ -5,6 +5,7 @@ from matplotlib.transforms import IdentityTransform, TransformedBbox, Bbox
 from typing import Sequence
 from sympy import solve, Poly, Eq, Function, exp, symbols
 import seaborn as sns
+from scipy.stats import norm
 
 def morse(D_e, b, r, r_e):
     """
@@ -16,7 +17,7 @@ def morse(D_e, b, r, r_e):
     b: int or float
         Controls width of potential
 
-    r: list or array of floats
+    r: array of floats
         Internuclear separation
 
     r_e: int or float
@@ -35,9 +36,9 @@ def energy_levels(levels, wavenumber, anharmonicity, D_e, b, r_e):
     levels: int
         Number of energy levels to calculate
 
-    wavenumber: 
+    wavenumber: int or float
 
-    anharmonicity:
+    anharmonicity: int or float
 
     D_e: int or float
         Dissociation energy
@@ -66,7 +67,7 @@ def gauss(sigma, x, mu):
     sigma: int or float
         Standard deviation of the destribution
 
-    x: list or array of floats
+    x: array of floats
 
     mu: int or float
         Mean or expectation of the distribution
@@ -84,7 +85,7 @@ def morse_antimorse(D_e, b, r, r_e):
     b: int or float
         Controls width of potential
 
-    r: list or array of floats
+    r: array of floats
         Internuclear separation
 
     r_e: int or float
@@ -200,7 +201,7 @@ def rot_xy(x,y,phi):
 
     Parameters
     ----------
-    x, y : list or array of floats
+    x, y : array of floats
         Coordinates to be rotated
 
     phi : int or float
@@ -223,12 +224,71 @@ def find_intercept(c1, c2, m1, m2):
     return x_intercept, y_intercept
 
 def orb_motion(D_e, b, R, r_eq, l, mu):
+    """
+    Parameters
+    ----------
+    D_e: int or float
+        Dissociation energy
+
+    b: int or float
+        Controls width of potential
+
+    R: array of floats
+        Internuclear separation
+
+    r_e: int or float
+        Equilibrium bond distance
+
+    l: int or float
+        Rotational quantum number, takes values 0, 1, 2, ...
+
+    mu: int or float
+        Reduced mass
+    """
     q = R-r_eq
     V_morse = D_e*(1-np.exp(-b*(q)))**2 -D_e
-    L = np.sqrt(l*(l+1)) # *((6.626*10**(-34))/(2*np.pi))
+    L = np.sqrt(l*(l+1)) 
     pot = (L**(2))/(2*mu*R**(2)) - 4.5
     V_eff = V_morse + pot
     return V_morse, pot, V_eff
+
+def ellipse(x_val, b, a):
+    """
+    Parameters
+    ----------
+    x_val: array of floats
+        Range of x-values defining the width of th ellipse if it where centered at the origin
+    
+    a, b: int or float
+        The width of the ellipse is 2*a and the height 2*b
+    """
+    y_val = (a*np.sqrt(b**2-x_val**2))/b
+    y_val = np.append(y_val[:-1], -y_val[::-1][1:])
+    x_array = np.append(x_val[:-1], x_val[::-1][1:])
+    
+    y_array = np.append(y_val, y_val[0])
+    x_array = np.append(x_array, x_array[0])
+
+    return x_array, y_array
+
+def potential_surface(x, x_b, n1, n2):
+    """
+    Parameters
+    ----------
+    x: array of floats
+        Reaction coordinate
+
+    x_b: int or float
+        Mid point (reaction coordinate) of potential
+
+    n1, n2: int or float
+        Scaling factors of first and second half of the potental
+    """
+    y = np.ones_like(x)
+    y[:x_b] += n1*norm.pdf(x[:x_b], x[x_b], 1)
+    y[x_b:] += n2*norm.pdf(x[x_b:], x[x_b], 1)
+    y[:x_b] = y[:x_b]+y[x_b]-y[x_b-1]
+    return y
 
 class AngleAnnotation(Arc):
     """
