@@ -26,7 +26,7 @@ def morse(D_e, b, r, r_e):
     V = D_e*(1-np.exp(-b*(r-r_e)))**2
     return V
 
-def energy_levels(levels, wavenumber, anharmonicity, D_e, b, r_e):
+def energy_levels_chap2(levels, wavenumber, anharmonicity, D_e, b, r_e):
     """
     Calculates energy levels with the same length as the width of the Morse potential it is used for.
     The spacing between the energy levels decreases with increasing energy.
@@ -289,6 +289,67 @@ def potential_surface(x, x_b, n1, n2):
     y[x_b:] += n2*norm.pdf(x[x_b:], x[x_b], 1)
     y[:x_b] = y[:x_b]+y[x_b]-y[x_b-1]
     return y
+
+def arrowed_spines(fig, ax):
+
+    xmin, xmax = ax.get_xlim() 
+    ymin, ymax = ax.get_ylim()
+
+    # removing the default axis on all sides:
+    for side in ['bottom','right','top','left']:
+        ax.spines[side].set_visible(False)
+
+    # removing the axis ticks
+    plt.xticks([]) # labels 
+    plt.yticks([])
+    ax.xaxis.set_ticks_position('none') # tick markers
+    ax.yaxis.set_ticks_position('none')
+
+    # get width and height of axes object to compute 
+    # matching arrowhead length and width
+    dps = fig.dpi_scale_trans.inverted()
+    bbox = ax.get_window_extent().transformed(dps)
+    width, height = bbox.width, bbox.height
+
+    # manual arrowhead width and length
+    hw = 1./30.*(ymax-ymin) 
+    hl = 1./20.*(xmax-xmin)
+    lw = 1. # axis line width
+    ohg = 0 # arrow overhang
+
+    # compute matching arrowhead length and width
+    yhw = hw/(ymax-ymin)*(xmax-xmin)* height/width 
+    yhl = hl/(xmax-xmin)*(ymax-ymin)* width/height
+
+    # draw x and y axis
+    ax.arrow(xmin, 0, xmax-xmin, 0., fc='k', ec='k', lw = lw, 
+             head_width=hw, head_length=hl, overhang = ohg, 
+             length_includes_head= True, clip_on = False) 
+
+    ax.arrow(0, ymin, 0., ymax-ymin, fc='k', ec='k', lw = lw, 
+             head_width=yhw, head_length=yhl, overhang = ohg, 
+             length_includes_head= True, clip_on = False)
+
+def potentials_chap15(D_e, b, r, r_e):
+    """
+    Parameters
+    ----------
+    D_e: int or float
+        Dissociation energy
+
+    b: int or float
+        Controls width of potential
+
+    r: array of floats
+        Internuclear separation
+
+    r_e: int or float
+        Equilibrium bond distance
+    """
+    q = r-r_e
+    V_morse = morse(D_e, b, r, r_e)-D_e
+    V_anti = (D_e/2)*(np.exp(-0.5*b*(q+0.2))+2*np.exp(-b*(q+0.2)))
+    return V_morse, V_anti
 
 class AngleAnnotation(Arc):
     """
