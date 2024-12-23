@@ -6,6 +6,8 @@ from typing import Sequence
 from sympy import solve, Poly, Eq, Function, exp, symbols
 import seaborn as sns
 from scipy.stats import norm
+from scipy.integrate import simpson
+import pandas as pd
 
 def morse(D_e, b, r, r_e):
     """
@@ -60,19 +62,25 @@ def energy_levels_chap2(levels, wavenumber, anharmonicity, D_e, b, r_e):
     distance_array = np.array(distance)
     return energy_levels, distance_array
 
-def gauss(sigma, x, mu):
+def gauss(sigma, x, mu, scale):
     """
     Parameters
     ----------
     sigma: int or float
-        Standard deviation of the destribution
+        Standard deviation of the distribution
 
     x: array of floats
 
     mu: int or float
         Mean or expectation of the distribution
+    
+    scale: int or float
+        Scaling factor
     """
-    y = (1/sigma*np.sqrt(2*np.pi))*np.exp(-0.5*((x-mu)/sigma)**2)
+    if scale == None:
+        y = (1/sigma*np.sqrt(2*np.pi))*np.exp(-0.5*((x-mu)/sigma)**2)
+    else:
+        y = scale*np.exp(-0.5*(x-mu)**2/sigma**2)
     return y
 
 def morse_antimorse(D_e, b, r, r_e):
@@ -350,6 +358,120 @@ def potentials_chap15(D_e, b, r, r_e):
     V_morse = morse(D_e, b, r, r_e)-D_e
     V_anti = (D_e/2)*(np.exp(-0.5*b*(q+0.2))+2*np.exp(-b*(q+0.2)))
     return V_morse, V_anti
+
+def wavefunction_harmonic(y, v):
+    """
+    Parameters
+    ----------
+    y: array of floats
+        Displacement along x-axis
+
+    v: int
+        Energy level
+    """
+    if v==0:
+        H = 1
+    if v==1:
+        H = 2*y
+    if v==2:
+        H = 4*y**2 - 2
+    if v==3:
+        H = 8*y**3 - 12*y
+    if v==4:
+        H = 16*y**4 - 48*y**2 + 12
+    if v==5:
+        H = 32*y**5 - 160*y**3 + 120*y
+    psi =  H*np.exp(-(y**2)/2)
+    a = simpson(psi**2)
+    return (1/np.sqrt(a))*H*np.exp(-(y**2)/2)
+
+def energy_levels_chap15(levels, anharmonicity, E_scale, D_e, b, r_e, y, psi_scale):
+    """
+    Parameters
+    ----------
+    levels: int
+        Number of energy levels to calculate
+
+    anharmonicity: int or float
+
+    E_scale: int or float
+        Scaling factor, scale the energy of each level
+
+    D_e: int or float
+        Dissociation energy
+
+    b: int or float
+        Controls width of potential
+
+    r_e: int or float
+        Equilibrium bond distance
+
+    y: array of floats
+        Displacement along x-axis
+
+    psi_scale: int or float
+        Scaling factor, scale the harmonic wavefunction
+    """
+    energy_levels = []
+    distance = []
+    psi = []
+    x_values = []
+    for v in range(levels+1):
+        E_v = ((v+0.5)*0.37-((v+0.5)**2)*0.37*anharmonicity)*E_scale # hbar*(k_f/mu)**1/2 = 0.37 eV, assuming H-Cl bond
+        energy_levels.append(E_v)
+        r = symbols('r')
+        dist = solve(D_e*(1-exp(-b*(r-r_e)))**2-E_v)
+        distance.append(dist)
+        wave = wavefunction_harmonic(y, v)*psi_scale + E_v
+        psi.append(wave[::-1])
+        x_val = np.linspace(float(dist[0])-0.15, float(dist[1])+0.15, 1000)
+        x_values.append(x_val)
+    distance_array = np.array(distance)
+    x_array = np.array(x_values)
+    psi_array = np.array(psi)
+    return energy_levels, distance_array, x_array, psi_array
+
+def intensities(B, n_list, nu, pop_list, x, sigma):
+    """
+    Parameters
+    ----------
+    B: int or float
+
+    n_list: array of ints
+        Length = 2 * number of vibrational states
+
+    nu: int or float
+
+    pop_list: array
+        Population of each vibrational state
+
+    x: array of floats
+        Wavelength range
+
+    sigma: int or float
+        Standard deviation of Gaussian distribution
+    """
+    
+    DeltaE_R = []
+    R_branch = []
+    
+    for n in n_list:
+        if (n % 2) == 0:
+            DeltaE_R.append(nu + n*B)
+            J = int(n/2)
+            R_branch.append((((J+1)/(2*J+1))*pop_list[J-1])/np.sum(pop_list))
+        
+        else:
+            DeltaE_R.append(nu + n*B)
+            R_branch.append(0)
+    branch = np.array(R_branch)/np.sum(pop_list)
+    intensity = pd.DataFrame(np.array([branch]).T, index = DeltaE_R, columns = ['intensity'])
+
+    y = np.zeros_like(x, dtype = np.float64)
+    for (wavenumber, int1) in zip(intensity.index.values, intensity['intensity']):
+        y += gauss(sigma, x, wavenumber, int1)
+
+    return y
 
 class AngleAnnotation(Arc):
     """
